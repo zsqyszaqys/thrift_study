@@ -1,4 +1,7 @@
-rc="game.jpg">
+## thrift
+***
+###一.项目描述
+### 游戏匹配服务
 
 - 服务分为三部分：分别是game，match_system，save_server
 - game为match_client端，通过match.thrift接口向match_system完成添加用户和删除用户的操作
