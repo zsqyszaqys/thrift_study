@@ -2,10 +2,13 @@
 // You should copy it to another filename to avoid overwriting it.
 
 #include "match_server/Match.h"
+#include "save_client/Save.h"
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/server/TSimpleServer.h>
 #include <thrift/transport/TServerSocket.h>
 #include <thrift/transport/TBufferTransports.h>
+#include <thrift/transport/TTransportUtils.h>
+#include <thrift/transport/TSocket.h>
 
 # include<iostream>
 # include<thread>
@@ -18,6 +21,7 @@ using namespace ::apache::thrift;
 using namespace ::apache::thrift::protocol;
 using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
+using namespace ::save_service;
 
 using namespace  ::match_service;
 using namespace std;
@@ -40,6 +44,22 @@ class pool
         void save_result(int a, int b)
         {
             printf("Match Result: %d %d\n", a, b);
+
+            std::shared_ptr<TTransport> socket(new TSocket("123.57.67.128", 9090));
+            std::shared_ptr<TTransport> transport(new TBufferedTransport(socket));
+            std::shared_ptr<TProtocol> protocol(new TBinaryProtocol(transport));
+            SaveClient client(protocol);
+
+            try {
+                transport->open();
+
+                client.save_data("acs_14241", "2b1f12c4", a, b);
+
+
+                transport->close();
+            } catch (TException& tx) {
+                cout << "ERROR: " << tx.what() << '\n';
+            }
         }
 
 
@@ -54,7 +74,7 @@ class pool
                 save_result(a.id, b.id);
             }
         }
-            
+
 
         void add(User user)
         {
@@ -79,32 +99,32 @@ class pool
 }pool;
 
 class MatchHandler : virtual public MatchIf {
- public:
-  MatchHandler() {
-    // Your initialization goes here
-  }
+    public:
+        MatchHandler() {
+            // Your initialization goes here
+        }
 
-  int32_t add_user(const User& user, const std::string& info) {
-    // Your implementation goes here
-    printf("add_user\n");
+        int32_t add_user(const User& user, const std::string& info) {
+            // Your implementation goes here
+            printf("add_user\n");
 
-    unique_lock<mutex> lck(message_queue.m);
-    message_queue.q.push({user, "add"});
-    message_queue.cv.notify_all();
+            unique_lock<mutex> lck(message_queue.m);
+            message_queue.q.push({user, "add"});
+            message_queue.cv.notify_all();
 
-    return 0;
-  }
+            return 0;
+        }
 
-  int32_t remove_user(const User& user, const std::string& info) {
-    // Your implementation goes here
-    printf("remove_user\n");
+        int32_t remove_user(const User& user, const std::string& info) {
+            // Your implementation goes here
+            printf("remove_user\n");
 
-    unique_lock<mutex> lck(message_queue.m);
-    message_queue.q.push({user, "remove"});
-    message_queue.cv.notify_all();
+            unique_lock<mutex> lck(message_queue.m);
+            message_queue.q.push({user, "remove"});
+            message_queue.cv.notify_all();
 
-    return 0;
-  }
+            return 0;
+        }
 
 };
 
@@ -134,20 +154,20 @@ void consume_task()
 
 
 int main(int argc, char **argv) {
-  int port = 9090;
-  ::std::shared_ptr<MatchHandler> handler(new MatchHandler());
-  ::std::shared_ptr<TProcessor> processor(new MatchProcessor(handler));
-  ::std::shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
-  ::std::shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
-  ::std::shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
+    int port = 9090;
+    ::std::shared_ptr<MatchHandler> handler(new MatchHandler());
+    ::std::shared_ptr<TProcessor> processor(new MatchProcessor(handler));
+    ::std::shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
+    ::std::shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
+    ::std::shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
 
-  TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
-    
-  cout << "Start Match Server" << endl;
-  
-  thread matching_thread(consume_task);
+    TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
 
-  server.serve();
-  return 0;
+    cout << "Start Match Server" << endl;
+
+    thread matching_thread(consume_task);
+
+    server.serve();
+    return 0;
 }
 
