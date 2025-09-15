@@ -1,6 +1,6 @@
 ## thrift
 ***
-###一.项目描述
+### 一.项目描述
 ### 游戏匹配服务
 
 - 服务分为三部分：分别是game，match_system，save_server
